@@ -5,12 +5,12 @@ import java.util.List;
 
 public class Team {
 
-    private int id;
+    private Integer id;
     private String name;
     private ContinentEnum continent;
     private List<Player> players;
 
-    public Team(int id, String name, ContinentEnum continent, List<Player>players) {
+    public Team() {
         this.id = id;
         this.name = name;
         this.continent = continent;
@@ -18,7 +18,7 @@ public class Team {
     }
 
 
-    public int getId() {
+    public Integer getId() {
         return id;
     }
 

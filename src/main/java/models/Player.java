@@ -2,7 +2,7 @@ package models;
 
 public class Player {
 
-    private int id;
+    private Integer id;
     private String name;
     private int age;
     private PlayerPositionEnum position;
@@ -10,7 +10,7 @@ public class Player {
 
 
     // Constructeur
-    public Player(int id, String name, int age, PlayerPositionEnum position, Team team) {
+    public Player() {
         this.id = id;
         this.name = name;
         this.age = age;
@@ -19,7 +19,7 @@ public class Player {
     }
 
 
-    public int getId() {
+    public Integer getId() {
         return id;
     }
 
@@ -61,7 +61,7 @@ public class Player {
 
 
     public String getTeamName() {
-        return team != null ? team.getName() : "No team";
+        throw new RuntimeException("Not supported yet.");
     }
 
     @Override

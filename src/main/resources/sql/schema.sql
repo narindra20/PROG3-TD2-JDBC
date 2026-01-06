@@ -12,7 +12,7 @@ CREATE TABLE Player (
     id_team INT,
     CONSTRAINT fk_team
       FOREIGN KEY (id_team)
-        REFERENCES Team(id)
+      REFERENCES Team(id)
     ON DELETE SET NULL
 );
 
