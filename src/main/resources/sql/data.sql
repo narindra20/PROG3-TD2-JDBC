@@ -6,7 +6,7 @@ INSERT INTO Team (name, continent) VALUES
 ('Al Ahly SC', 'AFRICA'),
 ('Inter Miami CF', 'AMERICA');
 
--- Player
+--Player
 INSERT INTO Player (name, age, position, id_team) VALUES
 ('Thibaut Courtois', 32, 'GK', 1),
 ('Dani Carvajal', 33, 'DEF', 1),
