@@ -1,16 +1,14 @@
 package service;
 
-import exceptions.UnknownPlayerGoalsException;
 import models.ContinentEnum;
 import models.Player;
 import models.PlayerPositionEnum;
 import models.Team;
+import exceptions.UnknownPlayerGoalsException;
 
-import java.util.ArrayList;
 import java.util.List;
 
 public class Main {
-
 
     public static void main(String[] args) {
         Main app = new Main();
@@ -18,144 +16,155 @@ public class Main {
     }
 
     private void run() {
-        System.out.println("=== PROG3 - TD JDBC ===\n");
+        System.out.println("=== PROG3 - TD JDBC - SUJET PLAYERS ===\n");
 
         DataRetriever dataRetriever = new DataRetriever();
 
-        testQuestion1(dataRetriever);
-        testQuestion2(dataRetriever);
-        testQuestion3(dataRetriever);
-        testQuestion4(dataRetriever);
-        testQuestion5(dataRetriever);
-        testQuestion6(dataRetriever);
+        System.out.println("=== TEST 1: findTeamById et getPlayersGoals ===\n");
+        testTeamWithKnownGoals(dataRetriever, 1, "Real Madrid CF", 7);
+        testTeamWithUnknownGoals(dataRetriever, 2, "FC Barcelona", "Robert Lewandowski");
+        testTeamWithUnknownGoals(dataRetriever, 3, "Atlético de Madrid", "Antoine Griezmann");
 
-        System.out.println("\n=== TESTS TERMINÉS ===");
+        System.out.println("=== TEST 2: saveTeam ===\n");
+        testCreateNewTeam(dataRetriever);
+        testUpdateExistingTeam(dataRetriever, 5, "Inter Miami CF");
+
+        System.out.println("=== TEST 3: Pagination joueurs ===\n");
+        testPaginationPlayers(dataRetriever, 1, 2);
+
+        System.out.println("=== TEST 4: Recherche équipes par joueur ===\n");
+        testFindTeamsByPlayer(dataRetriever, "Courtois");
+
+        System.out.println("=== TEST 5: Recherche joueurs par critères ===\n");
+        testFindPlayersByCriteria(dataRetriever, PlayerPositionEnum.DEF, 1, 10);
+
+        System.out.println("\n=== TD TERMINÉ ===");
     }
 
-    // ============================
-    // QUESTION 1
-    // ============================
-    private void testQuestion1(DataRetriever dataRetriever) {
-        System.out.println("\n--- QUESTION 1 : Équipe et joueurs ---");
-
-        Team team = dataRetriever.findTeamById(1);
-
-        if (team == null) {
-            System.out.println("Équipe non trouvée");
-            return;
-        }
-
-        System.out.println("Équipe : " + team.getName());
-
-        if (team.getPlayers() == null) {
-            System.out.println("Aucun joueur");
-            return;
-        }
-
-        for (Player player : team.getPlayers()) {
-            if (player.getGoalNb() == null) {
-                System.out.println("- " + player.getName() + " : buts inconnus");
-            } else {
-                System.out.println("- " + player.getName() + " : " + player.getGoalNb() + " buts");
+    // ------------------------
+    // Tests équipe avec buts connus
+    // ------------------------
+    private void testTeamWithKnownGoals(DataRetriever dataRetriever, int teamId, String expectedName, int expectedGoals) {
+        Team team = dataRetriever.findTeamById(teamId);
+        System.out.println("Test équipe : " + expectedName + " (id=" + teamId + ")");
+        if (team != null) {
+            System.out.println("✓ Équipe trouvée: " + team.getName());
+            try {
+                Integer totalGoals = team.getPlayersGoals();
+                System.out.println("Total buts = " + totalGoals + " (attendu " + expectedGoals + ")");
+            } catch (UnknownPlayerGoalsException e) {
+                System.out.println("✗ Exception inattendue : " + e.getMessage());
             }
+        } else {
+            System.out.println("✗ Équipe non trouvée");
         }
-
-        try {
-            Integer total = team.getPlayersGoals();
-            System.out.println("Total buts équipe = " + total);
-        } catch (UnknownPlayerGoalsException e) {
-            System.out.println("Erreur : " + e.getMessage());
-        }
+        System.out.println();
     }
 
-    // ============================
-    // QUESTION 2
-    // ============================
-    private void testQuestion2(DataRetriever dataRetriever) {
-        System.out.println("\n--- QUESTION 2 : Pagination ---");
+    // ------------------------
+    // Tests équipe avec buts inconnus (NULL)
+    // ------------------------
+    private void testTeamWithUnknownGoals(DataRetriever dataRetriever, int teamId, String expectedName, String playerWithNullGoals) {
+        Team team = dataRetriever.findTeamById(teamId);
+        System.out.println("Test équipe : " + expectedName + " (id=" + teamId + ")");
+        if (team != null) {
+            System.out.println("✓ Équipe trouvée: " + team.getName());
+            try {
+                team.getPlayersGoals();
+                System.out.println("✗ ERREUR : Exception attendue car " + playerWithNullGoals + " a goal_nb = NULL");
+            } catch (UnknownPlayerGoalsException e) {
+                System.out.println("✓ SUCCÈS : " + e.getMessage());
+            }
+        } else {
+            System.out.println("✗ Équipe non trouvée");
+        }
+        System.out.println();
+    }
 
-        List<Player> players = dataRetriever.findPlayers(1, 2);
+    // ------------------------
+    // Création d'une nouvelle équipe
+    // ------------------------
+    private void testCreateNewTeam(DataRetriever dataRetriever) {
+        try {
+            Team team = new Team();
+            team.setName("Équipe Test TD");
+            team.setContinent(ContinentEnum.ASIA);
 
-        System.out.println("Page 1 (2 joueurs) :");
+            Team saved = dataRetriever.saveTeam(team);
+            System.out.println("✓ Équipe créée : " + saved.getName() + ", ID=" + saved.getId());
+
+            Team retrieved = dataRetriever.findTeamById(saved.getId());
+            if (retrieved != null) {
+                System.out.println("✓ Équipe récupérée depuis la base");
+                try {
+                    System.out.println("Total buts équipe (vide) = " + retrieved.getPlayersGoals());
+                } catch (UnknownPlayerGoalsException e) {
+                    System.out.println("✗ Exception : " + e.getMessage());
+                }
+            }
+        } catch (Exception e) {
+            System.out.println("✗ Erreur lors de la création de l'équipe : " + e.getMessage());
+        }
+        System.out.println();
+    }
+
+    // ------------------------
+    // Mise à jour équipe existante
+    // ------------------------
+    private void testUpdateExistingTeam(DataRetriever dataRetriever, int teamId, String teamName) {
+        try {
+            Team team = dataRetriever.findTeamById(teamId);
+            if (team != null) {
+                System.out.println("Avant modification : " + team.getName());
+                String oldName = team.getName();
+                team.setName(oldName + " [MODIFIÉ]");
+
+                Team updated = dataRetriever.saveTeam(team);
+                System.out.println("Après modification : " + updated.getName());
+            } else {
+                System.out.println("⚠ " + teamName + " non trouvée");
+            }
+        } catch (Exception e) {
+            System.out.println("✗ Erreur lors de la mise à jour : " + e.getMessage());
+        }
+        System.out.println();
+    }
+
+    // ------------------------
+    // Pagination joueurs
+    // ------------------------
+    private void testPaginationPlayers(DataRetriever dataRetriever, int pageNumber, int pageSize) {
+        List<Player> players = dataRetriever.findPlayers(pageNumber, pageSize);
+        System.out.println("Page " + pageNumber + " (" + pageSize + " joueurs max) :");
         for (Player player : players) {
             System.out.println("- " + player.getName());
         }
+        System.out.println();
     }
 
-    // ============================
-    // QUESTION 3
-    // ============================
-    private void testQuestion3(DataRetriever dataRetriever) {
-        System.out.println("\n--- QUESTION 3 : Création joueur ---");
-
-        Player player = new Player();
-        player.setName("Joueur Test Simple");
-        player.setAge(22);
-        player.setPosition(PlayerPositionEnum.MIDF);
-        player.setGoalNb(4);
-
-        List<Player> players = new ArrayList<>();
-        players.add(player);
-
-        try {
-            List<Player> createdPlayers = dataRetriever.createPlayers(players);
-            System.out.println("Joueur créé avec ID : " + createdPlayers.get(0).getId());
-        } catch (Exception e) {
-            System.out.println("Erreur : " + e.getMessage());
-        }
-    }
-
-    // ============================
-    // QUESTION 4
-    // ============================
-    private void testQuestion4(DataRetriever dataRetriever) {
-        System.out.println("\n--- QUESTION 4 : Sauvegarde équipe ---");
-
-        Team team = new Team();
-        team.setName("Équipe Simple");
-        team.setContinent(ContinentEnum.EUROPA);
-
-        Team savedTeam = dataRetriever.saveTeam(team);
-
-        System.out.println("Équipe créée : " + savedTeam.getName());
-        System.out.println("ID : " + savedTeam.getId());
-
-        savedTeam.setName("Équipe Simple Modifiée");
-        dataRetriever.saveTeam(savedTeam);
-
-        System.out.println("Nom modifié avec succès");
-    }
-
-    // ============================
-    // QUESTION 5
-    // ============================
-    private void testQuestion5(DataRetriever dataRetriever) {
-        System.out.println("\n--- QUESTION 5 : Recherche équipes par joueur ---");
-
-        List<Team> teams = dataRetriever.findTeamsByPlayerName("Courtois");
-
+    // ------------------------
+    // Recherche équipes par joueur
+    // ------------------------
+    private void testFindTeamsByPlayer(DataRetriever dataRetriever, String playerName) {
+        List<Team> teams = dataRetriever.findTeamsByPlayerName(playerName);
+        System.out.println("Équipes contenant le joueur '" + playerName + "' :");
         for (Team team : teams) {
             System.out.println("- " + team.getName() + " (" + team.getContinent() + ")");
         }
+        System.out.println();
     }
 
-    // ============================
-    // QUESTION 6
-    // ============================
-    private void testQuestion6(DataRetriever dataRetriever) {
-        System.out.println("\n--- QUESTION 6 : Recherche par critères ---");
-
+    // ------------------------
+    // Recherche joueurs par critères
+    // ------------------------
+    private void testFindPlayersByCriteria(DataRetriever dataRetriever, PlayerPositionEnum position, int page, int pageSize) {
         List<Player> players = dataRetriever.findPlayersByCriteria(
-                null,
-                PlayerPositionEnum.DEF,
-                null,
-                null,
-                1,
-                10
+                null, position, null, null, page, pageSize
         );
-
+        System.out.println("Joueurs filtrés par position = " + position + " :");
         for (Player player : players) {
             System.out.println("- " + player.getName() + " | " + player.getPosition());
         }
+        System.out.println();
     }
 }
