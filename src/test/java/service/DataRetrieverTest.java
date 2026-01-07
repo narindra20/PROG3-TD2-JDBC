@@ -64,7 +64,7 @@ public class DataRetrieverTest{
     @Order(3)
     void testCreatePlayer() {
         Player player = new Player();
-        player.setName("JUnit Player " + System.currentTimeMillis()); // Nom unique
+        player.setName("JUnit Player " + System.currentTimeMillis());
         player.setAge(22);
         player.setPosition(PlayerPositionEnum.MIDF);
         player.setGoalNb(4);
@@ -132,7 +132,7 @@ public class DataRetrieverTest{
     @Test
     @Order(7)
     void testGetPlayersGoalsWithUnknownException() {
-        Team barcelona = dataRetriever.findTeamById(2); // Lewandowski a goalNb = null
+        Team barcelona = dataRetriever.findTeamById(2);
         assertNotNull(barcelona);
         assertThrows(UnknownPlayerGoalsException.class, barcelona::getPlayersGoals,
                 "Une exception doit être levée si un joueur a goalNb inconnu");
