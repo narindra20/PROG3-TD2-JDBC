@@ -7,6 +7,7 @@ public class Player {
     private int age;
     private PlayerPositionEnum position;
     private Team team;
+    private Integer goalNb;
 
 
     // Constructeur
@@ -64,9 +65,18 @@ public class Player {
         throw new RuntimeException("Not supported yet.");
     }
 
+    public Integer getGoalNb() {
+        return goalNb;
+    }
+
+    public void setGoalNb(Integer goalNb) {
+        this.goalNb = goalNb;
+    }
+
     @Override
     public String toString() {
-        return name + " (" + position + ") - " + getTeamName();
+        return "Player{id=" + id + ", name='" + name + "', age=" + age +
+                ", position=" + position + ", goalNb=" + goalNb + "}";
     }
 }
 

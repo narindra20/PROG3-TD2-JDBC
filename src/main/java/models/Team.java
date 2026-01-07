@@ -1,5 +1,8 @@
 package models;
 
+
+import exceptions.UnknownPlayerGoalsException;
+
 import java.util.ArrayList;
 import java.util.List;
 
@@ -58,13 +61,26 @@ public class Team {
         players.add(player);
     }
 
+    public Integer getPlayersGoals() {
+        if (players == null || players.isEmpty()) {
+            return 0;
+        }
+
+        int totalGoals = 0;
+
+        for (Player player : players) {
+            if (player.getGoalNb() == null) {
+                throw new UnknownPlayerGoalsException(player.getName());
+            }
+            totalGoals += player.getGoalNb();
+        }
+
+        return totalGoals;
+    }
+
     @Override
     public String toString() {
-        return "Team{" +
-                "id=" + id +
-                ", name='" + name + '\'' +
-                ", continent=" + continent +
-                ", playersCount=" + getPlayersCount() +
-                '}';
+        return "Team{id=" + id + ", name='" + name + "', continent=" + continent +
+                ", players=" + (players != null ? players.size() : 0) + "}";
     }
 }

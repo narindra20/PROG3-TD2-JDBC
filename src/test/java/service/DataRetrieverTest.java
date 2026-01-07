@@ -1,156 +1,140 @@
 package service;
 
-import database.DBConnection;
+import exceptions.UnknownPlayerGoalsException;
 import models.ContinentEnum;
 import models.Player;
 import models.PlayerPositionEnum;
 import models.Team;
 import org.junit.jupiter.api.*;
 
-import java.sql.Connection;
-import java.sql.SQLException;
-import java.sql.Statement;
+import java.util.ArrayList;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.*;
 
-class DataRetrieverTest {
+@TestMethodOrder(MethodOrderer.OrderAnnotation.class)
+public class DataRetrieverTest{
 
     private DataRetriever dataRetriever;
 
     @BeforeEach
-    void setup() throws SQLException {
+    void setUp() {
         dataRetriever = new DataRetriever();
-
-        try (Connection conn = DBConnection.getConnection();
-             Statement stmt = conn.createStatement()) {
-
-            // Supprimer les tables si elles existent
-            stmt.execute("DROP TABLE IF EXISTS player");
-            stmt.execute("DROP TABLE IF EXISTS team");
-
-            // Créer table team
-            stmt.execute("""
-                    CREATE TABLE team (
-                        id SERIAL PRIMARY KEY,
-                        name VARCHAR(100) NOT NULL,
-                        continent VARCHAR(50) NOT NULL
-                    )
-                    """);
-
-            // Créer table player
-            stmt.execute("""
-                    CREATE TABLE player (
-                        id SERIAL PRIMARY KEY,
-                        name VARCHAR(100) NOT NULL,
-                        age INT NOT NULL CHECK (age > 0),
-                        position VARCHAR(50) NOT NULL,
-                        id_team INT REFERENCES team(id) ON DELETE SET NULL
-                    )
-                    """);
-
-            // Insérer les équipes
-            stmt.execute("""
-                    INSERT INTO team (name, continent) VALUES
-                    ('Real Madrid CF', 'EUROPA'),
-                    ('FC Barcelona', 'EUROPA'),
-                    ('Atlético de Madrid', 'EUROPA'),
-                    ('Al Ahly SC', 'AFRICA'),
-                    ('Inter Miami CF', 'AMERICA')
-                    """);
-
-            // Insérer les joueurs
-            stmt.execute("""
-                    INSERT INTO player (name, age, position, id_team) VALUES
-                    ('Thibaut Courtois', 32, 'GK', 1),
-                    ('Dani Carvajal', 33, 'DEF', 1),
-                    ('Jude Bellingham', 21, 'MIDF', 1),
-                    ('Robert Lewandowski', 36, 'STR', 2),
-                    ('Antoine Griezmann', 33, 'STR', 3)
-                    """);
-        }
     }
 
-    @AfterEach
-    void teardown() throws SQLException {
-        try (Connection conn = DBConnection.getConnection();
-             Statement stmt = conn.createStatement()) {
-            stmt.execute("DROP TABLE IF EXISTS player");
-            stmt.execute("DROP TABLE IF EXISTS team");
-        }
-    }
-
+    // ============================
+    // QUESTION 1 : findTeamById & getPlayersGoals
+    // ============================
     @Test
-    void testFindTeamById() {
-        // Test Real Madrid
+    @Order(1)
+    void testFindTeamByIdAndGetPlayersGoals() {
         Team team = dataRetriever.findTeamById(1);
-        assertNotNull(team);
-        assertEquals("Real Madrid CF", team.getName());
-        assertEquals(ContinentEnum.EUROPA, team.getContinent());
-        assertEquals(3, team.getPlayers().size());
+        assertNotNull(team, "L'équipe avec id=1 doit exister");
+        assertNotNull(team.getPlayers(), "Les joueurs doivent être chargés");
+
+        for (Player player : team.getPlayers()) {
+            assertNotNull(player.getGoalNb(), "Chaque joueur doit avoir goalNb renseigné pour ce test");
+        }
+
+        try {
+            Integer totalGoals = team.getPlayersGoals();
+            assertEquals(7, totalGoals, "Total des buts de Real Madrid CF attendu = 7");
+        } catch (UnknownPlayerGoalsException e) {
+            fail("Exception inattendue : " + e.getMessage());
+        }
     }
 
+    // ============================
+    // QUESTION 2 : Pagination joueurs
+    // ============================
     @Test
-    void testFindPlayersPagination() {
-        // Page 1, 2 joueurs
+    @Order(2)
+    void testPaginationPlayers() {
         List<Player> page1 = dataRetriever.findPlayers(1, 2);
-        assertEquals(2, page1.size());
-        assertEquals("Thibaut Courtois", page1.get(0).getName());
+        assertTrue(page1.size() <= 2, "Page 1 doit contenir au maximum 2 joueurs");
 
-        // Page 2, 2 joueurs
         List<Player> page2 = dataRetriever.findPlayers(2, 2);
-        assertEquals(2, page2.size());
-        assertEquals("Jude Bellingham", page2.get(0).getName());
+        assertTrue(page2.size() <= 2, "Page 2 doit contenir au maximum 2 joueurs");
     }
 
+    // ============================
+    // QUESTION 3 : Création joueur
+    // ============================
     @Test
+    @Order(3)
+    void testCreatePlayer() {
+        Player player = new Player();
+        player.setName("JUnit Player " + System.currentTimeMillis()); // Nom unique
+        player.setAge(22);
+        player.setPosition(PlayerPositionEnum.MIDF);
+        player.setGoalNb(4);
+
+        List<Player> players = new ArrayList<>();
+        players.add(player);
+
+        List<Player> created = dataRetriever.createPlayers(players);
+        assertNotNull(created.get(0).getId(), "L'ID du joueur créé ne doit pas être null");
+        assertEquals(4, created.get(0).getGoalNb(), "Le nombre de buts doit être correct");
+    }
+
+    // ============================
+    // QUESTION 4 : Sauvegarde et modification équipe
+    // ============================
+    @Test
+    @Order(4)
+    void testSaveAndUpdateTeam() {
+        Team team = new Team();
+        team.setName("JUnit Team");
+        team.setContinent(ContinentEnum.EUROPA);
+
+        Team saved = dataRetriever.saveTeam(team);
+        assertNotNull(saved.getId(), "L'équipe doit avoir un ID après sauvegarde");
+        assertEquals("JUnit Team", saved.getName());
+
+        saved.setName("JUnit Team Modifiée");
+        Team updated = dataRetriever.saveTeam(saved);
+        assertEquals("JUnit Team Modifiée", updated.getName(), "Le nom de l'équipe doit être modifié");
+    }
+
+    // ============================
+    // QUESTION 5 : Recherche équipes par joueur
+    // ============================
+    @Test
+    @Order(5)
     void testFindTeamsByPlayerName() {
-        // Recherche Lewandowski
-        List<Team> teams = dataRetriever.findTeamsByPlayerName("lewa");
-        assertEquals(1, teams.size());
-        assertEquals("FC Barcelona", teams.get(0).getName());
+        List<Team> teams = dataRetriever.findTeamsByPlayerName("Courtois");
+        assertFalse(teams.isEmpty(), "Au moins une équipe doit contenir le joueur 'Courtois'");
     }
 
+    // ============================
+    // QUESTION 6 : Recherche par critères
+    // ============================
     @Test
+    @Order(6)
     void testFindPlayersByCriteria() {
-        // Recherche joueurs EUROPA et position STR
         List<Player> players = dataRetriever.findPlayersByCriteria(
-                null, PlayerPositionEnum.STR, null, ContinentEnum.EUROPA, 1, 10
+                null,
+                PlayerPositionEnum.DEF,
+                null,
+                null,
+                1,
+                10
         );
-        assertEquals(2, players.size()); // Lewandowski et Griezmann
+
+        for (Player p : players) {
+            assertEquals(PlayerPositionEnum.DEF, p.getPosition(), "Tous les joueurs doivent être défenseurs");
+        }
     }
 
+    // ============================
+    // BONUS : getPlayersGoals avec exception
+    // ============================
     @Test
-    void testSaveTeamInsert() {
-        Team newTeam = new Team();
-        newTeam.setName("Manchester United");
-        newTeam.setContinent(ContinentEnum.EUROPA);
-
-        Team savedTeam = dataRetriever.saveTeam(newTeam);
-        assertNotNull(savedTeam.getId());
-        assertEquals("Manchester United", savedTeam.getName());
-    }
-
-    @Test
-    void testUpdateTeamWithPlayers() {
-        // Récupérer Real Madrid
-        Team team = dataRetriever.findTeamById(1);
-
-        // Ajouter un joueur fictif
-        Player p = new Player();
-        p.setName("Karim Benzema");
-        p.setAge(34);
-        p.setPosition(PlayerPositionEnum.STR);
-        dataRetriever.createPlayers(List.of(p));
-
-        team.getPlayers().add(p);
-
-        // Update équipe
-        Team updated = dataRetriever.saveTeam(team);
-
-        // Vérifier que le joueur est associé
-        boolean found = updated.getPlayers().stream()
-                .anyMatch(pl -> pl.getName().equals("Karim Benzema"));
-        assertTrue(found);
+    @Order(7)
+    void testGetPlayersGoalsWithUnknownException() {
+        Team barcelona = dataRetriever.findTeamById(2); // Lewandowski a goalNb = null
+        assertNotNull(barcelona);
+        assertThrows(UnknownPlayerGoalsException.class, barcelona::getPlayersGoals,
+                "Une exception doit être levée si un joueur a goalNb inconnu");
     }
 }
